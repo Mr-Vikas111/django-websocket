@@ -15,16 +15,18 @@
     <body>
         <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
         
-        <textarea name="" id="chat-log" cols="100", rows="20"> </textarea><br>
+        <textarea name="" id="chat-log" cols="100", rows="20"> 
+
+            {% for chat in chats %}
+                {{chat.content}}
+            {% endfor %}
+        </textarea><br>
         
         <input type="text" id="chat-msg-input" size="100"><br>
         <input type="button" value="Send" id="chat-msg-submit">
         {{group_name|json_script:"group-name"}}
        
         <script>
-            {% comment %} var ws = new WebSocket('ws://127.0.0.1:8000/ws/ac/') {% endcomment %}
-
-            {% comment %} const ws = new WebSocket() {% endcomment %}
 
             const groupName =  JSON.parse(document.getElementById('group-name').textContent)
             

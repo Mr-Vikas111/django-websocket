@@ -1,74 +1,18 @@
-# from channels.consumer import SyncConsumer, AsyncConsumer
-# from channels.exceptions import StopConsumer
-# from time import sleep
-
-# # SyncConsumer
-# class MySyncConsumer(SyncConsumer):
-    
-#     def websocket_connect(self,event):
-#         print("websocket connect")
-#         self.send({
-#             'type':'websocket.accept'
-#         })
-        
-#     def websocket_receive(self,event):
-#         print("websocket receive",event)
-#         print("websocket receive text",event['text'])
-        
-#         for i in range(10):
-#             # send msg to client function
-#             self.send({
-#                 'type':'websocket.send',
-#                 'text':str(i)
-#             })
-#             sleep(1)
-            
-#     def websocket_disconnect(self,event):
-#         print("websocket disconnect")
-#         raise StopConsumer()
-        
-        
-# # AsyncConsumer
-# class MyAsyncConsumer(AsyncConsumer):
-    
-#     async def websocket_connect(self,event):
-#         print("websocket connect")
-#         await self.send({
-#             'type':'websocket.accept'
-#         })
-        
-#     async def websocket_receive(self,event):
-#         print("websocket receive")
-        
-#         # send msg to client
-#         await self.send({
-#             'type':'websocket.send',
-#             'text':"mai hu server"
-#         })
-        
-        
-#     async def websocket_disconnect(self,event):
-#         print("websocket disconnect")
-#         raise StopConsumer()
-
-
-
 from channels.consumer import SyncConsumer, AsyncConsumer
 from channels.exceptions import StopConsumer
+from channels.db import database_sync_to_async
 from asgiref.sync import async_to_sync
+import json
+from .models import Group, Chat
 
 
-
+"""# Sync Consumer"""
 class MySyncConsumer(SyncConsumer):
     def websocket_connect(self,event):
         print("websocket connect",event)
-        
         print("Channel Layer ..",self.channel_layer) # get default channel layer
-
         print("Channel Name ..",self.channel_name) # get default channel name
-        
         self.group_name = self.scope['url_route']['kwargs']['groupname']
-        
         print("group name ->",self.group_name)
         
         # add channels in a new or existing group (note -> group_add() is async function) and it must be
@@ -82,15 +26,19 @@ class MySyncConsumer(SyncConsumer):
             'type':'websocket.accept'
         })
         
-    
-        
         
     def websocket_receive(self,event):
         print("message receive from client",event)
-        
         print("message fro client side ",event['text'])
-        
         print("type of message ->",type(event['text']))
+        
+        data = json.loads(event['text'])
+        
+        # get group name
+        group = Group.objects.get(name=self.group_name)
+        
+        # create chat
+        chat = Chat.objects.create(group=group,content=data['msg'])
         
         async_to_sync(self.channel_layer.group_send)(
             self.group_name,
@@ -114,9 +62,7 @@ class MySyncConsumer(SyncConsumer):
     
     def websocket_disconnect(self,event):
         print("websocket disconnected",event)
-        
         print("Channel Layer ..",self.channel_layer) # get default channel layer
-
         print("Channel Name ..",self.channel_name) # get default channel name
         
         # discard group
@@ -127,16 +73,14 @@ class MySyncConsumer(SyncConsumer):
         raise StopConsumer
 
 
+""" # Async Consumer Class """
 class MyAsyncConsumer(AsyncConsumer):
     async def websocket_connect(self,event):
         print("websocket connect",event)
-        
         print("Channel Layer ..",self.channel_layer) # get default channel layer
-
         print("Channel Name ..",self.channel_name) # get default channel name
-        
+
         self.group_name = self.scope['url_route']['kwargs']['groupname']
-        
         await self.channel_layer.group_add(
             self.group_name, # group name
             self.channel_name
@@ -151,10 +95,16 @@ class MyAsyncConsumer(AsyncConsumer):
         
     async def websocket_receive(self,event):
         print("message receive from client",event)
-        
         print("message fro client side ",event['text'])
-        
         print("type of message ->",type(event['text']))
+        
+        data = json.loads(event['text'])
+        
+        # get group name
+        group = await database_sync_to_async(Group.objects.get)(name=self.group_name)
+        
+        # create chat
+        await database_sync_to_async(Chat.objects.create)(group=group,content=data['msg'])
         
         await self.channel_layer.group_send(
             self.group_name,
@@ -178,9 +128,7 @@ class MyAsyncConsumer(AsyncConsumer):
     
     async def websocket_disconnect(self,event):
         print("websocket disconnected",event)
-        
         print("Channel Layer ..",self.channel_layer) # get default channel layer
-
         print("Channel Name ..",self.channel_name) # get default channel name
         
         # discard group
