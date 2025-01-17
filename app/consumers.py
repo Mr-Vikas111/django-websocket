@@ -34,20 +34,29 @@ class MySyncConsumer(SyncConsumer):
         
         data = json.loads(event['text'])
         
-        # get group name
-        group = Group.objects.get(name=self.group_name)
+       
         
-        # create chat
-        chat = Chat.objects.create(group=group,content=data['msg'])
+        print("user->",self.scope['user'])  
+        data['user'] = self.scope['user'].username      
         
-        async_to_sync(self.channel_layer.group_send)(
-            self.group_name,
-            {
-                'type':'chat.message', # custom handler
-                'message':event['text']
-            }
-            )
-    
+        if self.scope['user'].is_authenticated:
+            
+            # get group name
+            group = Group.objects.get(name=self.group_name)
+            # create chat
+            chat = Chat.objects.create(group=group,content=data['msg'])
+            async_to_sync(self.channel_layer.group_send)(
+                self.group_name,
+                {
+                    'type':'chat.message', # custom handler
+                    'message':json.dumps(data) # convert python dict to str
+                    
+                    
+                }
+                )
+        else:
+            self.send({'type':'websocket.send','text':json.dumps({"msg":"login required","user":"Guest"})})
+        
     # create custom handler for send message to client 
     def chat_message(self,event):
         print("event .. of chat message ->",event['message'])
@@ -97,22 +106,26 @@ class MyAsyncConsumer(AsyncConsumer):
         print("message receive from client",event)
         print("message fro client side ",event['text'])
         print("type of message ->",type(event['text']))
-        
         data = json.loads(event['text'])
         
+        data['user'] = self.scope['user'].username  
+        
         # get group name
-        group = await database_sync_to_async(Group.objects.get)(name=self.group_name)
-        
-        # create chat
-        await database_sync_to_async(Chat.objects.create)(group=group,content=data['msg'])
-        
-        await self.channel_layer.group_send(
-            self.group_name,
-            {
-                'type':'chat.message', # custom handler
-                'message':event['text']
-            }
-            )
+        if self.scope['user'].is_authenticated:
+            group = await database_sync_to_async(Group.objects.get)(name=self.group_name)
+            
+            # create chat
+            await database_sync_to_async(Chat.objects.create)(group=group,content=data['msg'])
+            
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    'type':'chat.message', # custom handler
+                    'message':json.dumps(data)
+                }
+                )
+        else:
+            await self.send({'type':'websocket.send','text':json.dumps({"msg":"login required","user":"Guest"})})
     
     # create custom handler for send message to client 
     async def chat_message(self,event):

@@ -52,7 +52,9 @@
                 console.log("type of parsed data",typeof(data))
                 console.log("actual of parsed data",data.msg)
 
-                document.querySelector('#chat-log').value += (data.msg + '\n')
+                console.log("actual of user parsed data",data.user)
+
+                document.querySelector('#chat-log').value += (data.user+ ": "+data.msg + '\n')
             }
 
             ws.onclose = function(event){
