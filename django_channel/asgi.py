@@ -7,12 +7,23 @@ import app.routing
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_channel.settings')
 
+""" for authentication websocket """
+# application = ProtocolTypeRouter(
+#     {
+#         'http':get_asgi_application(),
+#         'websocket':AuthMiddlewareStack(URLRouter(
+#             app.routing.websocket_urls
+#         ))
+     
+#      }
+# )
+
 application = ProtocolTypeRouter(
     {
         'http':get_asgi_application(),
-        'websocket':AuthMiddlewareStack(URLRouter(
+        'websocket':URLRouter(
             app.routing.websocket_urls
-        ))
+        )
      
      }
 )
